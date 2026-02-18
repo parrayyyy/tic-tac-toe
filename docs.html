@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Multiplayer Tic Tac Toe</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+body{
+font-family:Arial;
+background:linear-gradient(135deg,#ffc0cb,#ffd6e7);
+text-align:center;
+}
+
+.board{
+display:grid;
+grid-template-columns:repeat(3,100px);
+gap:10px;
+justify-content:center;
+margin:20px;
+}
+
+.cell{
+width:100px;
+height:100px;
+background:#ffe6f0;
+font-size:30px;
+display:flex;
+justify-content:center;
+align-items:center;
+cursor:pointer;
+border-radius:10px;
+}
+</style>
+
+</head>
+<body>
+
+<h2>💗 Multiplayer Tic Tac Toe</h2>
+
+<input id="name" placeholder="Your Name">
+<br><br>
+
+<button onclick="createRoom()">Create Room</button>
+<input id="roomInput" placeholder="Room Code">
+<button onclick="joinRoom()">Join Room</button>
+
+<h3 id="roomCode"></h3>
+<h3 id="status"></h3>
+
+<div class="board" id="board"></div>
+
+<script>
+
+/* 🔥 PASTE YOUR FIREBASE CONFIG HERE */
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCve6XMOdPC133iMZJUV5FPKvzWYmFcZaI",
+  authDomain: "tic-tac-toe-f38e0.firebaseapp.com",
+  projectId: "tic-tac-toe-f38e0",
+  storageBucket: "tic-tac-toe-f38e0.firebasestorage.app",
+  messagingSenderId: "433934111127",
+  appId: "1:433934111127:web:e1409548c52068df91b4d2",
+  measurementId: "G-KSZ5KQWJ0G"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* Game Variables */
+
+let roomId=null;
+let playerSymbol=null;
+let playerName="";
+
+/* Create Board */
+
+const boardDiv=document.getElementById("board");
+
+function drawBoard(board){
+
+boardDiv.innerHTML="";
+
+board.forEach((cell,i)=>{
+let div=document.createElement("div");
+div.className="cell";
+div.innerText=cell;
+div.onclick=()=>makeMove(i);
+boardDiv.appendChild(div);
+});
+
+}
+
+/* Create Room */
+
+function createRoom(){
+
+playerName=document.getElementById("name").value || "Player";
+
+roomId=Math.random().toString(36).substr(2,5);
+
+playerSymbol="X";
+
+db.ref("rooms/"+roomId).set({
+board:["","","","","","","","",""],
+turn:"X",
+players:{
+X:playerName
+}
+});
+
+listenRoom();
+
+document.getElementById("roomCode").innerText=
+"Room Code: "+roomId;
+
+}
+
+/* Join Room */
+
+function joinRoom(){
+
+playerName=document.getElementById("name").value || "Player";
+
+roomId=document.getElementById("roomInput").value;
+
+playerSymbol="O";
+
+db.ref("rooms/"+roomId+"/players/O").set(playerName);
+
+listenRoom();
+
+}
+
+/* Listen for Updates */
+
+function listenRoom(){
+
+db.ref("rooms/"+roomId).on("value",snap=>{
+
+let data=snap.val();
+
+if(!data) return;
+
+drawBoard(data.board);
+
+let turnName=data.players[data.turn] || "";
+
+document.getElementById("status").innerText=
+"Turn: "+turnName;
+
+checkWinner(data.board,data.players);
+
+});
+
+}
+
+/* Make Move */
+
+function makeMove(index){
+
+let ref=db.ref("rooms/"+roomId);
+
+ref.transaction(room=>{
+
+if(!room) return;
+
+if(room.turn!==playerSymbol) return;
+
+if(room.board[index]!=="") return;
+
+room.board[index]=playerSymbol;
+
+room.turn=playerSymbol==="X"?"O":"X";
+
+return room;
+
+});
+
+}
+
+/* Winner */
+
+function checkWinner(board,players){
+
+const wins=[
+[0,1,2],[3,4,5],[6,7,8],
+[0,3,6],[1,4,7],[2,5,8],
+[0,4,8],[2,4,6]
+];
+
+for(let w of wins){
+
+let[a,b,c]=w;
+
+if(board[a] && board[a]===board[b] && board[a]===board[c]){
+
+let winner=players[board[a]];
+
+document.getElementById("status").innerText=
+"🎉 "+winner+" Wins!";
+
+launchConfetti();
+
+}
+}
+
+}
+
+/* Confetti */
+
+function launchConfetti(){
+
+for(let i=0;i<50;i++){
+
+let c=document.createElement("div");
+c.style.position="fixed";
+c.style.width="8px";
+c.style.height="8px";
+c.style.background=`hsl(${Math.random()*360},100%,60%)`;
+c.style.left=Math.random()*100+"vw";
+c.style.top="0";
+c.style.animation="fall 3s linear";
+
+document.body.appendChild(c);
+
+setTimeout(()=>c.remove(),3000);
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
